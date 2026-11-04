@@ -32,35 +32,47 @@ def normalize_text(text: str) -> str:
 
 
 
+
 def has_negative_intent(text: str, keyword: str) -> bool:
-    """
-    Detect negative intent before or after a matched keyword.
-    Supports common English and Bengali expressions.
-    """
     text = normalize_text(text)
     keyword = normalize_text(keyword)
 
     start = 0
 
+    english_negative_before = [
+        r"(?:do not|don't|dont|does not|doesn't)\s*$",
+        r"(?:do not|don't|dont|does not|doesn't)\s+need\s*$",
+        r"not interested in\s*$",
+        r"not looking for\s*$",
+        r"no need for\s*$",
+    ]
+
+    bengali_negative_after = (
+        "\u09a8\u09be",
+        "\u09a8\u09c7\u0987",
+        "\u09b2\u09be\u0997\u09ac\u09c7 \u09a8\u09be",
+        "\u099a\u09be\u0987 \u09a8\u09be",
+        "\u09a6\u09b0\u0995\u09be\u09b0 \u09a8\u09c7\u0987",
+        "\u09aa\u09cd\u09b0\u09af\u09bc\u09cb\u099c\u09a8 \u09a8\u09c7\u0987",
+        "\u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+        "\u09a6\u09bf\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+        "\u09a4\u09c1\u09b2\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+        "\u0995\u09b0\u09a4\u09c7 \u09b9\u09ac\u09c7 \u09a8\u09be",
+        "\u09a6\u09bf\u09a4\u09c7 \u09b9\u09ac\u09c7 \u09a8\u09be",
+        "\u09a4\u09c8\u09b0\u09bf \u0995\u09b0\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+        "\u09ac\u09be\u09a8\u09be\u09a4\u09c7 \u099a\u09be\u0987 \u09a8\u09be",
+        "\u09a4\u09c8\u09b0\u09bf \u0995\u09b0\u09be \u09a6\u09b0\u0995\u09be\u09b0 \u09a8\u09c7\u0987",
+        "\u0995\u09b0\u09be\u09b0 \u09a6\u09b0\u0995\u09be\u09b0 \u09a8\u09c7\u0987",
+    )
+
     while True:
         position = text.find(keyword, start)
-
         if position == -1:
             break
 
         end = position + len(keyword)
-
         before = text[max(0, position - 50):position]
-        after = text[end:end + 40]
-
-        # English negative intent immediately before keyword
-        english_negative_before = [
-            r"(?:do not|don't|dont|does not|doesn't)\s*$",
-            r"(?:do not|don't|dont|does not|doesn't)\s+need\s*$",
-            r"not interested in\s*$",
-            r"not looking for\s*$",
-            r"no need for\s*$",
-        ]
+        after = text[end:end + 60].lstrip()
 
         if any(
             re.search(pattern, before, re.IGNORECASE)
@@ -68,26 +80,12 @@ def has_negative_intent(text: str, keyword: str) -> bool:
         ):
             return True
 
-        # Bengali negative intent immediately after keyword
-        bengali_negative_after = [
-            r"^\s*না",
-            r"^\s*নেই",
-            r"^\s*লাগবে\s+না",
-            r"^\s*চাই\s+না",
-            r"^\s*দরকার\s+নেই",
-            r"^\s*প্রয়োজন\s+নেই",
-        ]
-
-        if any(
-            re.search(pattern, after)
-            for pattern in bengali_negative_after
-        ):
+        if after.startswith(bengali_negative_after):
             return True
 
         start = end
 
     return False
-
 
 def match_services(text: str) -> list[dict]:
     if not isinstance(text, str) or not text.strip():
