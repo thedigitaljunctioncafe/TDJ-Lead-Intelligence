@@ -1,0 +1,2 @@
+# Install alongside the existing backend/requirements.txt
+alembic>=1.14,<2

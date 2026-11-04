@@ -1,0 +1,2 @@
+Alembic migration environment for TDJ Lead Intelligence.
+Run from the backend directory: alembic -c alembic.ini upgrade head
