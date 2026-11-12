@@ -26,7 +26,27 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(160), default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_user_session_token_hash"),
+        Index("ix_user_sessions_user_id", "user_id"),
+        Index("ix_user_sessions_expires_at", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Workspace(Base):
@@ -257,3 +277,110 @@ class AuditLog(Base):
     target_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     details_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class IntelligenceResult(Base):
+    __tablename__ = "intelligence_results"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "result_key",
+            name="uq_intelligence_result_workspace_key",
+        ),
+        CheckConstraint(
+            "result_type IN ('discovery_signal', "
+            "'confirmed_service_intent', 'potential_opportunity')",
+            name="ck_intelligence_result_type",
+        ),
+        CheckConstraint(
+            "confidence_score IS NULL OR "
+            "(confidence_score >= 0 AND confidence_score <= 100)",
+            name="ck_intelligence_result_confidence_range",
+        ),
+        Index(
+            "ix_intelligence_results_workspace_type",
+            "workspace_id",
+            "result_type",
+        ),
+        Index("ix_intelligence_results_source_record", "source_record_id"),
+        Index("ix_intelligence_results_entity", "entity_id"),
+        Index("ix_intelligence_results_lead", "lead_id"),
+        Index("ix_intelligence_results_discovery_run", "discovery_run_id"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=new_id
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    discovery_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("discovery_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    source_record_id: Mapped[str | None] = mapped_column(
+        ForeignKey("source_records.id", ondelete="SET NULL"), nullable=True
+    )
+    entity_id: Mapped[str | None] = mapped_column(
+        ForeignKey("entities.id", ondelete="SET NULL"), nullable=True
+    )
+    lead_id: Mapped[str | None] = mapped_column(
+        ForeignKey("leads.id", ondelete="SET NULL"), nullable=True
+    )
+    result_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    result_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    result_payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    engine_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    confidence_score: Mapped[float | None] = mapped_column(
+        Float, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+        nullable=False,
+    )
+
+
+class WorkspaceDomainAllowlist(Base):
+    __tablename__ = "workspace_domain_allowlist"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "domain",
+            name="uq_workspace_allowlist_domain",
+        ),
+        CheckConstraint(
+            "length(domain) >= 1 AND length(domain) <= 253",
+            name="ck_allowlist_domain_length",
+        ),
+        Index("ix_workspace_allowlist_workspace_active", "workspace_id", "is_active"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    domain: Mapped[str] = mapped_column(String(253), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    approved_by_user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    approved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        nullable=False,
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        nullable=False,
+    )

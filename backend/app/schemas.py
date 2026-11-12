@@ -29,3 +29,29 @@ class DatabaseSummary(BaseModel):
     entity_count: int
     lead_count: int
     source_record_count: int
+
+# Authentication schemas
+
+class LoginRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=1, max_length=1024)
+
+
+class WorkspaceMembershipRead(BaseModel):
+    workspace_id: str
+    workspace_name: str
+    workspace_slug: str
+    role: str
+
+
+class AuthUserRead(BaseModel):
+    id: str
+    email: str
+    display_name: str
+    memberships: list[WorkspaceMembershipRead]
+
+
+class AuthStatusRead(BaseModel):
+    authenticated: bool
+    user: AuthUserRead | None = None
+
