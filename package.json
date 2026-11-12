@@ -1,0 +1,13 @@
+{
+  "name": "tdj-lead-intelligence",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "bun --cwd frontend run dev",
+    "build": "bun --cwd frontend run build",
+    "start": "bun --cwd frontend run start"
+  }
+}
